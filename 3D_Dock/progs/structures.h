@@ -46,7 +46,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 /************/
 
-/* Macros - realy, you don't want to touch these! */
+/* Macros - really, you don't want to touch these! */
 
 #define gaddress(x,y,z,grid_size) ( (z) + ( 2 * ( (grid_size) / 2 + 1 ) ) * ( (y) + (grid_size) * (x) ) )
 
@@ -54,6 +54,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define min(a,b) (((a)<(b))?(a):(b))
 #define max(a,b) (((a)>(b))?(a):(b))
+
+#define PYTHAGORAS(_x1, _y1, _z1, _x2, _y2, _z2) ({				\
+  sqrt( ( ( _x1 - _x2 ) * ( _x1 - _x2 ) ) + ( ( _y1 - _y2 ) * ( _y1 - _y2 ) ) + ( ( _z1 - _z2 ) * ( _z1 - _z2 ) ) ) ;	\
+})
 
 #define GENERAL_MEMORY_PROBLEM printf( "You do not have enough memory ([m|re]alloc failure)\nDying\n\n" ) ; exit( EXIT_FAILURE ) ;
 

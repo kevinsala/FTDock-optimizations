@@ -77,8 +77,6 @@ void assign_charges( struct Structure This_Structure ) {
 
 /************************/
 
-
-
 void electric_field( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) {
 
 /************/
@@ -132,39 +130,29 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
         phi = 0 ;
 
         for( residue = 1 ; residue <= This_Structure.length ; residue ++ ) {
-          for( atom = 1 ; atom <= This_Structure.Residue[residue].size ; atom ++ ) {
+	  
+	  struct Amino_Acid * aminoacid = &(This_Structure.Residue[residue]);
+	  int aminoacid_size = aminoacid->size;
+	  
+          for( atom = 1 ; atom <= aminoacid_size ; atom ++ ) {
+	    
+	    struct Atom * atom_obj = &(aminoacid->Atom[atom]);
 
-            if( This_Structure.Residue[residue].Atom[atom].charge != 0 ) {
+             if( atom_obj->charge != 0 ) {
 
-              distance = pythagoras( This_Structure.Residue[residue].Atom[atom].coord[1] , This_Structure.Residue[residue].Atom[atom].coord[2] , This_Structure.Residue[residue].Atom[atom].coord[3] , x_centre , y_centre , z_centre ) ;
+              distance = PYTHAGORAS( atom_obj->coord[1] , atom_obj->coord[2] , atom_obj->coord[3] , x_centre , y_centre , z_centre ) ;
          
-              if( distance < 2.0 ) distance = 2.0 ;
+              distance = (distance < 2.0) ? 2.0 : distance ;
 
-              if( distance >= 2.0 ) {
+	      epsilon = (distance >= 8.0) ? 80 : epsilon;
+	      epsilon = (distance <= 6.0) ? 4  : ( 38 * distance ) - 224;
+	      
+// 	      if( distance >= 8.0 ) epsilon = 80;
+// 	      else if( distance <= 6.0 ) epsilon = 4;
+// 	      else epsilon = ( 38 * distance ) - 224;
 
-                if( distance >= 8.0 ) {
-
-                  epsilon = 80 ;
-
-                } else { 
-
-                  if( distance <= 6.0 ) { 
-
-                    epsilon = 4 ;
-             
-                  } else {
-
-                    epsilon = ( 38 * distance ) - 224 ;
-
-                  }
-
-                }
-  
-                phi += ( This_Structure.Residue[residue].Atom[atom].charge / ( epsilon * distance ) ) ;
-
-              }
-
-            }
+	      phi += ( atom_obj->charge / ( epsilon * distance ) ) ;
+             }
 
           }
         }

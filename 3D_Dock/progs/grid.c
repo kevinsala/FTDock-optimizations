@@ -88,7 +88,7 @@ void discretise_structure( struct Structure This_Structure , float grid_span , i
 
             z_centre  = gcentre( z_step , grid_span , grid_size ) ;
 
-            if( pythagoras( This_Structure.Residue[residue].Atom[atom].coord[1] , This_Structure.Residue[residue].Atom[atom].coord[2] , This_Structure.Residue[residue].Atom[atom].coord[3] , x_centre , y_centre , z_centre ) < distance ) grid[gaddress(x_step,y_step,z_step,grid_size)] = (float)1 ;
+            if( PYTHAGORAS( This_Structure.Residue[residue].Atom[atom].coord[1] , This_Structure.Residue[residue].Atom[atom].coord[2] , This_Structure.Residue[residue].Atom[atom].coord[3] , x_centre , y_centre , z_centre ) < distance ) grid[gaddress(x_step,y_step,z_step,grid_size)] = (float)1 ;
 
           }
         }
