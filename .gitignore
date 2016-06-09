@@ -1,0 +1,5 @@
+*.o
+*ftdock
+*build
+*randomspin
+*core
