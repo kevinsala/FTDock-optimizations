@@ -12,7 +12,7 @@
 
 # This line you will definitely have to edit
 
-FFTW_DIR        = /home2/users/alumnes/1171896/PCA/LIBRARIES/fftw-2.1.3/installation
+FFTW_DIR        = $(PATH_LLIB)/fftw-3.3.4/installation
 
 #############
 
@@ -24,7 +24,7 @@ SHELL           = /bin/sh
 
 CC              = gcc
 
-CC_FLAGS        = -O3 -march=native -pg -g -static 
+CC_FLAGS        = -O3 -march=native -pg -g 
 STRIP           = strip
 
 CC_LINKERS      = -lm
@@ -36,7 +36,7 @@ SECURITY	= chmod 555
 # You should not be editing anything below here
 
 CC_FLAGS_FULL	= -I$(FFTW_DIR)/include $(CC_FLAGS)
-FFTW_LINKERS    = -L$(FFTW_DIR)/lib -lrfftw -lfftw
+FFTW_LINKERS    = -L$(FFTW_DIR)/lib -lfftw3f
 
 #############
 

@@ -40,13 +40,13 @@ inline void end_timing() {
   printf("Elapsed time: %lf s\n", secs);
 }
 
-void print_electric_grid ( fftw_real *grid, int grid_size)
+void print_electric_grid ( float *grid, int grid_size)
 {
   int i, diff;
 
-  for (i=0; i<(grid_size * grid_size * ( 2 * ( grid_size / 2 + 1 ) ) * sizeof( fftw_real ))-3; i+=4) 
+  for (i=0; i<(grid_size * grid_size * ( 2 * ( grid_size / 2 + 1 ) ) * sizeof( float ))-3; i+=4) 
        write (1, (void *)((char *)grid+i), sizeof(int));  
-  if ((diff=i-(grid_size * grid_size * ( 2 * ( grid_size / 2 + 1 ) ) * sizeof( fftw_real )))>0)
+  if ((diff=i-(grid_size * grid_size * ( 2 * ( grid_size / 2 + 1 ) ) * sizeof( float )))>0)
        write(1,(void *)((char *)grid+i),diff);
 
 }
@@ -107,25 +107,30 @@ int main( int argc , char *argv[] ) {
 
   float		grid_span , one_span ;
 
-  fftw_real	*static_grid ;
-  fftw_real	*mobile_grid ;
-  fftw_real	*convoluted_grid ;
+  float *static_grid ;
+  float *mobile_grid ;
+  float *convoluted_grid ;
 
-  fftw_real	*static_elec_grid = ( void * ) 0 ;
-  fftw_real	*mobile_elec_grid = ( void * ) 0 ;
-  fftw_real	*convoluted_elec_grid = ( void * ) 0 ;
+  float *static_elec_grid = ( void * ) 0 ;
+  float *mobile_elec_grid = ( void * ) 0 ;
+  float *convoluted_elec_grid = ( void * ) 0 ;
 
   /* FFTW stuff */
+  
+  fftwf_plan	plan_static_grid,
+		plan_static_elec_grid,
+		plan_multiple_fsg,
+		plan_multiple_elec_fsg,
+		plan_mobile_grid,
+		plan_mobile_elec_grid;
 
-  rfftwnd_plan	p , pinv ;
+  fftwf_complex  *static_fsg ;
+  fftwf_complex  *mobile_fsg ;
+  fftwf_complex  *multiple_fsg ;
 
-  fftw_complex  *static_fsg ;
-  fftw_complex  *mobile_fsg ;
-  fftw_complex  *multiple_fsg ;
-
-  fftw_complex  *static_elec_fsg = ( void * ) 0 ;
-  fftw_complex  *mobile_elec_fsg = ( void * ) 0 ;
-  fftw_complex  *multiple_elec_fsg = ( void * ) 0 ;
+  fftwf_complex  *static_elec_fsg = ( void * ) 0 ;
+  fftwf_complex  *mobile_elec_fsg = ( void * ) 0 ;
+  fftwf_complex  *multiple_elec_fsg = ( void * ) 0 ;
 
   /* Scores */
 
@@ -160,9 +165,9 @@ int main( int argc , char *argv[] ) {
 
   /* Memory allocation */
 
-  if( ( ( output_file_name  = ( char * ) malloc ( 500 * sizeof( char ) ) ) == NULL ) ||
-      ( ( static_file_name  = ( char * ) malloc ( 500 * sizeof( char ) ) ) == NULL ) ||
-      ( ( mobile_file_name  = ( char * ) malloc ( 500 * sizeof( char ) ) ) == NULL ) ) {
+  if( ( ( output_file_name  = ( char * ) fftwf_malloc ( 500 * sizeof( char ) ) ) == NULL ) ||
+      ( ( static_file_name  = ( char * ) fftwf_malloc ( 500 * sizeof( char ) ) ) == NULL ) ||
+      ( ( mobile_file_name  = ( char * ) fftwf_malloc ( 500 * sizeof( char ) ) ) == NULL ) ) {
     GENERAL_MEMORY_PROBLEM 
   }
 
@@ -408,14 +413,14 @@ int main( int argc , char *argv[] ) {
   /* Free some memory */
 
   for( i = 1 ; i <= Static_Structure.length ; i ++ ) {
-    free( Static_Structure.Residue[i].Atom ) ;
+    fftwf_free( Static_Structure.Residue[i].Atom ) ;
   }
-  free( Static_Structure.Residue ) ;
+  fftwf_free( Static_Structure.Residue ) ;
 
   for( i = 1 ; i <= Mobile_Structure.length ; i ++ ) {
-    free( Mobile_Structure.Residue[i].Atom ) ;
+    fftwf_free( Mobile_Structure.Residue[i].Atom ) ;
   }
-  free( Mobile_Structure.Residue ) ;
+  fftwf_free( Mobile_Structure.Residue ) ;
 
 /************/
 
@@ -439,50 +444,50 @@ int main( int argc , char *argv[] ) {
 
   /* Memory Allocation */
 
-  if( ( Scores = ( struct Score * ) malloc ( ( keep_per_rotation + 2 ) * sizeof( struct Score ) ) ) == NULL ) {
+  if( ( Scores = ( struct Score * ) fftwf_malloc ( ( keep_per_rotation + 2 ) * sizeof( struct Score ) ) ) == NULL ) {
     GENERAL_MEMORY_PROBLEM
   }
 
   if(
-    ( ( static_grid = ( fftw_real * ) malloc
-     ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( fftw_real ) ) ) == NULL )
+    ( ( static_grid = ( float * ) fftwf_malloc
+     ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( float ) ) ) == NULL )
     ||
-    ( ( mobile_grid = ( fftw_real * ) malloc
-     ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( fftw_real ) ) ) == NULL )
+    ( ( mobile_grid = ( float * ) fftwf_malloc
+     ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( float ) ) ) == NULL )
     ||
-    ( ( convoluted_grid = ( fftw_real * ) malloc
-     ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( fftw_real ) ) ) == NULL )
+    ( ( convoluted_grid = ( float * ) fftwf_malloc
+     ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( float ) ) ) == NULL )
     ) {
     printf( "Not enough memory for surface grids\nUse (sensible) smaller grid size\nDying\n\n" ) ;
     exit( EXIT_FAILURE ) ;
   }
 
-  static_fsg = ( fftw_complex * ) static_grid ;
-  mobile_fsg = ( fftw_complex * ) mobile_grid ;
-  multiple_fsg = ( fftw_complex * ) convoluted_grid ;
+  static_fsg = ( fftwf_complex * ) static_grid ;
+  mobile_fsg = ( fftwf_complex * ) mobile_grid ;
+  multiple_fsg = ( fftwf_complex * ) convoluted_grid ;
 
   if( electrostatics == 1 ) {
 
     if(
-      ( ( static_elec_grid = ( fftw_real * ) malloc
-       ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( fftw_real ) ) ) == NULL )
+      ( ( static_elec_grid = ( float * ) fftwf_malloc
+       ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( float ) ) ) == NULL )
       ||
-      ( ( mobile_elec_grid = ( fftw_real * ) malloc
-       ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( fftw_real ) ) ) == NULL )
+      ( ( mobile_elec_grid = ( float * ) fftwf_malloc
+       ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( float ) ) ) == NULL )
       ||
-      ( ( convoluted_elec_grid = ( fftw_real * ) malloc
-       ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( fftw_real ) ) ) == NULL )
+      ( ( convoluted_elec_grid = ( float * ) fftwf_malloc
+       ( global_grid_size * global_grid_size * ( 2 * ( global_grid_size / 2 + 1 ) ) * sizeof( float ) ) ) == NULL )
       ) {
-      printf( "Not enough memory for electrostatic grids\nSwitch off electrostatics or use (sensible) smaller grid size\nDying\n\n" ) ;
+      printf( "Not enough memory for electrostatic grids\nSwitch off electrostatics or use (sensible) smaller grid size\nDying\n\n" ) ; 
       exit( EXIT_FAILURE ) ;
     } else {
       /* all ok */
       printf( "Electrostatics are on\n" ) ;
     }
 
-    static_elec_fsg = ( fftw_complex * ) static_elec_grid ;
-    mobile_elec_fsg = ( fftw_complex * ) mobile_elec_grid ;
-    multiple_elec_fsg = ( fftw_complex * ) convoluted_elec_grid ;
+    static_elec_fsg = ( fftwf_complex * ) static_elec_grid ;
+    mobile_elec_fsg = ( fftwf_complex * ) mobile_elec_grid ;
+    multiple_elec_fsg = ( fftwf_complex * ) convoluted_elec_grid ;
 
   }
 
@@ -491,11 +496,47 @@ int main( int argc , char *argv[] ) {
   /* Create FFTW plans */
 
   printf( "Creating plans\n" ) ;
-  p    = rfftw3d_create_plan( global_grid_size , global_grid_size , global_grid_size ,
-                               FFTW_REAL_TO_COMPLEX , FFTW_ESTIMATE| FFTW_IN_PLACE ) ;
-  pinv = rfftw3d_create_plan( global_grid_size , global_grid_size , global_grid_size ,
-                               FFTW_COMPLEX_TO_REAL , FFTW_ESTIMATE| FFTW_IN_PLACE ) ;
+  plan_static_grid = fftwf_plan_dft_r2c_3d(global_grid_size,
+					   global_grid_size,
+					   global_grid_size,
+					   static_grid,
+					   static_grid,
+					   FFTW_MEASURE);
 
+  plan_static_elec_grid = fftwf_plan_dft_r2c_3d(global_grid_size,
+						global_grid_size,
+						global_grid_size,
+						static_elec_grid,
+						static_elec_grid,
+						FFTW_MEASURE);
+  
+  plan_mobile_grid = fftwf_plan_dft_r2c_3d(global_grid_size,
+					   global_grid_size,
+					   global_grid_size,
+					   mobile_grid,
+					   mobile_grid,
+					   FFTW_MEASURE);
+
+  plan_mobile_elec_grid = fftwf_plan_dft_r2c_3d(global_grid_size,
+						global_grid_size,
+						global_grid_size,
+						mobile_elec_grid,
+						mobile_elec_grid,
+						FFTW_MEASURE);
+  
+  plan_multiple_fsg = fftwf_plan_dft_c2r_3d(global_grid_size,
+					    global_grid_size,
+					    global_grid_size,
+					    multiple_fsg,
+					    multiple_fsg,
+					    FFTW_MEASURE);
+  
+  plan_multiple_elec_fsg = fftwf_plan_dft_c2r_3d(global_grid_size,
+						 global_grid_size,
+						 global_grid_size,
+						 multiple_elec_fsg,
+						 multiple_elec_fsg,
+						 FFTW_MEASURE);
 /************/
 
   printf( "PCA TIMING SHOULD start here\n");
@@ -517,9 +558,9 @@ int main( int argc , char *argv[] ) {
 
   /* Fourier Transform the static grids (need do only once) */
   printf( "  one time forward FFT calculations\n" ) ;
-  rfftwnd_one_real_to_complex( p , static_grid , NULL ) ;
+  fftwf_execute(plan_static_grid);
   if( electrostatics == 1 ) {
-    rfftwnd_one_real_to_complex( p , static_elec_grid , NULL ) ;
+    fftwf_execute(plan_static_elec_grid);
   }
 
   printf( "  done\n" ) ;
@@ -589,9 +630,9 @@ int main( int argc , char *argv[] ) {
     }
 
     /* Forward Fourier Transforms */
-    rfftwnd_one_real_to_complex( p , mobile_grid , NULL ) ;
+    fftwf_execute(plan_mobile_grid);
     if( electrostatics == 1 ) {
-      rfftwnd_one_real_to_complex( p , mobile_elec_grid , NULL ) ;
+      fftwf_execute(plan_mobile_elec_grid);
     }
 
 /************/
@@ -608,16 +649,16 @@ int main( int argc , char *argv[] ) {
 
           fxyz = fz + ( global_grid_size/2 + 1 ) * ( fy + global_grid_size * fx ) ;
 
-          multiple_fsg[fxyz].re =
-           static_fsg[fxyz].re * mobile_fsg[fxyz].re + static_fsg[fxyz].im * mobile_fsg[fxyz].im ;
-          multiple_fsg[fxyz].im =
-           static_fsg[fxyz].im * mobile_fsg[fxyz].re - static_fsg[fxyz].re * mobile_fsg[fxyz].im ;
+          multiple_fsg[fxyz][0] =
+           static_fsg[fxyz][0] * mobile_fsg[fxyz][0] + static_fsg[fxyz][1] * mobile_fsg[fxyz][1] ;
+          multiple_fsg[fxyz][1] =
+           static_fsg[fxyz][1] * mobile_fsg[fxyz][0] - static_fsg[fxyz][0] * mobile_fsg[fxyz][1] ;
            
           if( electrostatics == 1 ) {
-            multiple_elec_fsg[fxyz].re =
-             static_elec_fsg[fxyz].re * mobile_elec_fsg[fxyz].re + static_elec_fsg[fxyz].im * mobile_elec_fsg[fxyz].im ;
-            multiple_elec_fsg[fxyz].im =
-             static_elec_fsg[fxyz].im * mobile_elec_fsg[fxyz].re - static_elec_fsg[fxyz].re * mobile_elec_fsg[fxyz].im ;
+            multiple_elec_fsg[fxyz][0] =
+             static_elec_fsg[fxyz][0] * mobile_elec_fsg[fxyz][0] + static_elec_fsg[fxyz][1] * mobile_elec_fsg[fxyz][1] ;
+            multiple_elec_fsg[fxyz][1] =
+             static_elec_fsg[fxyz][1] * mobile_elec_fsg[fxyz][0] - static_elec_fsg[fxyz][0] * mobile_elec_fsg[fxyz][1] ;
           }
 
         }
@@ -625,9 +666,9 @@ int main( int argc , char *argv[] ) {
     }
 
     /* Reverse Fourier Transform */
-    rfftwnd_one_complex_to_real( pinv , multiple_fsg , NULL ) ;
+    fftwf_execute(plan_multiple_fsg);
     if( electrostatics == 1 ) {
-      rfftwnd_one_complex_to_real( pinv , multiple_elec_fsg , NULL ) ;
+      fftwf_execute(plan_multiple_elec_fsg);
     }
 
 /************/
@@ -729,9 +770,9 @@ int main( int argc , char *argv[] ) {
 
     /* Free some memory */
     for( i = 1 ; i <= Rotated_at_Origin_Mobile_Structure.length ; i ++ ) {
-      free( Rotated_at_Origin_Mobile_Structure.Residue[i].Atom ) ;
+      fftwf_free( Rotated_at_Origin_Mobile_Structure.Residue[i].Atom ) ;
     }
-    free( Rotated_at_Origin_Mobile_Structure.Residue ) ;
+    fftwf_free( Rotated_at_Origin_Mobile_Structure.Residue ) ;
 
   }
 
@@ -741,28 +782,32 @@ int main( int argc , char *argv[] ) {
 
   /* Free the memory */
 
-  rfftwnd_destroy_plan( p ) ;
-  rfftwnd_destroy_plan( pinv ) ;
+  fftwf_destroy_plan(plan_static_grid);
+  fftwf_destroy_plan(plan_static_elec_grid);
+  fftwf_destroy_plan(plan_mobile_grid);
+  fftwf_destroy_plan(plan_mobile_elec_grid); 
+  fftwf_destroy_plan(plan_multiple_fsg);
+  fftwf_destroy_plan(plan_multiple_elec_fsg);
 
-  free( static_grid ) ;
-  free( mobile_grid ) ;
-  free( convoluted_grid ) ;
+  fftwf_free( static_grid ) ;
+  fftwf_free( mobile_grid ) ;
+  fftwf_free( convoluted_grid ) ;
 
   if( electrostatics == 1 ) {
-    free( static_elec_grid ) ;
-    free( mobile_elec_grid ) ;
-    free( convoluted_elec_grid ) ;
+    fftwf_free( static_elec_grid ) ;
+    fftwf_free( mobile_elec_grid ) ;
+    fftwf_free( convoluted_elec_grid ) ;
   }
 
   for( i = 1 ; i <= Origin_Static_Structure.length ; i ++ ) {
-    free( Origin_Static_Structure.Residue[i].Atom ) ;
+    fftwf_free( Origin_Static_Structure.Residue[i].Atom ) ;
   }
-  free( Origin_Static_Structure.Residue ) ;
+  fftwf_free( Origin_Static_Structure.Residue ) ;
 
   for( i = 1 ; i <= Origin_Mobile_Structure.length ; i ++ ) {
-    free( Origin_Mobile_Structure.Residue[i].Atom ) ;
+    fftwf_free( Origin_Mobile_Structure.Residue[i].Atom ) ;
   }
-  free( Origin_Mobile_Structure.Residue ) ;
+  fftwf_free( Origin_Mobile_Structure.Residue ) ;
 
       /* PCA: Finishing programm here*/ 
       printf("PCA TIMING SHOULD stop here\n");

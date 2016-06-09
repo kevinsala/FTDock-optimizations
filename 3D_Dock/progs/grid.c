@@ -28,7 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "structures.h"
 
-void discretise_structure( struct Structure This_Structure , float grid_span , int grid_size , fftw_real *grid ) {
+void discretise_structure( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) {
 
 /************/
 
@@ -59,7 +59,7 @@ void discretise_structure( struct Structure This_Structure , float grid_span , i
     for( y = 0 ; y < grid_size ; y ++ ) {
       for( z = 0 ; z < grid_size ; z ++ ) {
 
-        grid[gaddress(x,y,z,grid_size)] = (fftw_real)0 ;
+        grid[gaddress(x,y,z,grid_size)] = (float)0 ;
 
       }
     }
@@ -88,7 +88,7 @@ void discretise_structure( struct Structure This_Structure , float grid_span , i
 
             z_centre  = gcentre( z_step , grid_span , grid_size ) ;
 
-            if( pythagoras( This_Structure.Residue[residue].Atom[atom].coord[1] , This_Structure.Residue[residue].Atom[atom].coord[2] , This_Structure.Residue[residue].Atom[atom].coord[3] , x_centre , y_centre , z_centre ) < distance ) grid[gaddress(x_step,y_step,z_step,grid_size)] = (fftw_real)1 ;
+            if( pythagoras( This_Structure.Residue[residue].Atom[atom].coord[1] , This_Structure.Residue[residue].Atom[atom].coord[2] , This_Structure.Residue[residue].Atom[atom].coord[3] , x_centre , y_centre , z_centre ) < distance ) grid[gaddress(x_step,y_step,z_step,grid_size)] = (float)1 ;
 
           }
         }
@@ -109,7 +109,7 @@ void discretise_structure( struct Structure This_Structure , float grid_span , i
 
 
 
-void surface_grid( float grid_span , int grid_size , fftw_real *grid , float surface , float internal_value ) {
+void surface_grid( float grid_span , int grid_size , float *grid , float surface , float internal_value ) {
 
 
 /************/
@@ -157,7 +157,7 @@ void surface_grid( float grid_span , int grid_size , fftw_real *grid , float sur
             }
           }
 
-          if( at_surface == 0 ) grid[gaddress(x,y,z,grid_size)] = (fftw_real)internal_value ;
+          if( at_surface == 0 ) grid[gaddress(x,y,z,grid_size)] = (float)internal_value ;
 
         }
 

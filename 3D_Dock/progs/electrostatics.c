@@ -79,7 +79,7 @@ void assign_charges( struct Structure This_Structure ) {
 
 
 
-void electric_field( struct Structure This_Structure , float grid_span , int grid_size , fftw_real *grid ) {
+void electric_field( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) {
 
 /************/
 
@@ -103,7 +103,7 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
     for( y = 0 ; y < grid_size ; y ++ ) {
       for( z = 0 ; z < grid_size ; z ++ ) {
 
-        grid[gaddress(x,y,z,grid_size)] = (fftw_real)0 ;
+        grid[gaddress(x,y,z,grid_size)] = (float)0 ;
 
       }
     }
@@ -169,7 +169,7 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
           }
         }
 
-        grid[gaddress(x,y,z,grid_size)] = (fftw_real)phi ;
+        grid[gaddress(x,y,z,grid_size)] = (float)phi ;
 
       }
     }
@@ -189,7 +189,7 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
 
 
 
-void electric_point_charge( struct Structure This_Structure , float grid_span , int grid_size , fftw_real *grid ) {
+void electric_point_charge( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) {
 
 /************/
 
@@ -216,7 +216,7 @@ void electric_point_charge( struct Structure This_Structure , float grid_span , 
     for( y = 0 ; y < grid_size ; y ++ ) {
       for( z = 0 ; z < grid_size ; z ++ ) {
 
-        grid[gaddress(x,y,z,grid_size)] = (fftw_real)0 ;
+        grid[gaddress(x,y,z,grid_size)] = (float)0 ;
 
       }
     }
@@ -257,7 +257,7 @@ void electric_point_charge( struct Structure This_Structure , float grid_span , 
 
               w = ( ( x_corner + a ) * ( y_corner + b ) * ( z_corner + c ) ) / ( 8.0 * x_corner * y_corner * z_corner ) ;
 
-              grid[gaddress(x,y,z,grid_size)] += (fftw_real)( w * This_Structure.Residue[residue].Atom[atom].charge ) ;
+              grid[gaddress(x,y,z,grid_size)] += (float)( w * This_Structure.Residue[residue].Atom[atom].charge ) ;
 
             }
           }
@@ -280,7 +280,7 @@ void electric_point_charge( struct Structure This_Structure , float grid_span , 
 
 
 
-void electric_field_zero_core( int grid_size , fftw_real *elec_grid , fftw_real *surface_grid , float internal_value ) {
+void electric_field_zero_core( int grid_size , float *elec_grid , float *surface_grid , float internal_value ) {
 
 /************/
 
@@ -294,7 +294,7 @@ void electric_field_zero_core( int grid_size , fftw_real *elec_grid , fftw_real 
     for( y = 0 ; y < grid_size ; y ++ ) {
       for( z = 0 ; z < grid_size ; z ++ ) {
 
-        if( surface_grid[gaddress(x,y,z,grid_size)] == (fftw_real)internal_value ) elec_grid[gaddress(x,y,z,grid_size)] = (fftw_real)0 ;
+        if( surface_grid[gaddress(x,y,z,grid_size)] == (float)internal_value ) elec_grid[gaddress(x,y,z,grid_size)] = (float)0 ;
 
       }
     }

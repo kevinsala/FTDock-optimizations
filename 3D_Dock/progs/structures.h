@@ -31,7 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
-#include "rfftw.h"
+#include "fftw3.h"
 
 /************/
 
@@ -145,13 +145,13 @@ extern struct Angle generate_range_of_angles( int angle_step , int angle_range ,
 extern int gord( float position , float grid_span , int grid_size ) ;
 extern float pythagoras( float x1 , float y1 , float z1 , float x2 , float y2 , float z2 ) ;
 
-extern void discretise_structure( struct Structure This_Structure , float grid_span , int grid_size , fftw_real *grid ) ;
-extern void surface_grid( float grid_span , int grid_size , fftw_real *grid , float surface , float internal_value ) ;
+extern void discretise_structure( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) ;
+extern void surface_grid( float grid_span , int grid_size , float *grid , float surface , float internal_value ) ;
 
 extern void assign_charges( struct Structure This_Structure ) ;
-extern void electric_field( struct Structure This_Structure , float grid_span , int grid_size , fftw_real *grid ) ;
-extern void electric_point_charge( struct Structure This_Structure , float grid_span , int grid_size , fftw_real *grid ) ;
-extern void electric_field_zero_core( int grid_size , fftw_real *elec_grid , fftw_real *surface_grid , float internal_value ) ;
+extern void electric_field( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) ;
+extern void electric_point_charge( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) ;
+extern void electric_field_zero_core( int grid_size , float *elec_grid , float *surface_grid , float internal_value ) ;
 
 extern void qsort_scores( struct Score *Scores , int left , int right ) ;
 extern void qsort_rpscores( struct Score *Scores , int left , int right ) ;
