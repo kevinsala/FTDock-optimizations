@@ -115,13 +115,14 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
   
   /* Calculates the number of atoms */
   atom_number = 0;
-  for (residue = 1; residue <= This_Structure.length; residue++)
+  for (residue = 1; residue <= This_Structure.length; residue++) {
     atom_number += This_Structure.Residue[residue].size;
+  }
   
   /* Allocates memory for all the needed attibutes of the atoms */
   float *coord1, *coord2, *coord3, *charge;
   int error;
-  error = posix_memalign((void **) &coord1, 16, atom_number * sizeof(float));
+  error  = posix_memalign((void **) &coord1, 16, atom_number * sizeof(float));
   error |= posix_memalign((void **) &coord2, 16, atom_number * sizeof(float));
   error |= posix_memalign((void **) &coord3, 16, atom_number * sizeof(float));
   error |= posix_memalign((void **) &charge, 16, atom_number * sizeof(float));
@@ -134,14 +135,20 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
     Amino_Acid * aminoacid = &(This_Structure.Residue[residue]);
     int aminoacid_size = aminoacid->size;
     
-    for (atom = 1; atom <= aminoacid_size; atom++, ++atom_position) {
+    for (atom = 1; atom <= aminoacid_size; atom++) {
       Atom * atom_obj = &(aminoacid->Atom[atom]);
-      coord1[atom_position] = atom_obj->coord[1];
-      coord2[atom_position] = atom_obj->coord[2];
-      coord3[atom_position] = atom_obj->coord[3];
-      charge[atom_position] = atom_obj->charge;
+      if (atom_obj->charge != 0) {
+	coord1[atom_position] = atom_obj->coord[1];
+	coord2[atom_position] = atom_obj->coord[2];
+	coord3[atom_position] = atom_obj->coord[3];
+	charge[atom_position] = atom_obj->charge;
+	++atom_position;
+      }
     }
   }
+  
+  /* Sets the actual number of computable atoms */
+  atom_number = atom_position;
 
 //   for( x = 0 ; x < grid_size ; x ++ ) {
 // 
@@ -206,16 +213,14 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
         phi = 0;
 	
 	for (atom_position = 0; atom_position < atom_number; ++atom_position) {
-	  if (charge[atom_position] != 0) {
-	      distance = PYTHAGORAS(coord1[atom_position], coord2[atom_position], coord3[atom_position], x_centre, y_centre, z_centre);
-	      
-	      distance = (distance < 2.0) ? 2.0 : distance;
-	      epsilon = 80;
-	      epsilon = (distance >= 2.0 & distance <= 6.0) ? 4 : epsilon;
-	      epsilon = (distance > 6.0 & distance < 8.0) ? (38 * distance) - 224 : epsilon;
+	  distance = PYTHAGORAS(coord1[atom_position], coord2[atom_position], coord3[atom_position], x_centre, y_centre, z_centre);
+	  
+	  distance = (distance < 2.0) ? 2.0 : distance;
+	  epsilon = 80;
+	  epsilon = (distance >= 2.0 & distance <= 6.0) ? 4 : epsilon;
+	  epsilon = (distance > 6.0 & distance < 8.0) ? (38 * distance) - 224 : epsilon;
 
-	      phi += (charge[atom_position] / (epsilon * distance));
-	  }
+	  phi += (charge[atom_position] / (epsilon * distance));
 	}
 
         grid[gaddress(x, y, z, grid_size)] = (float) phi;
