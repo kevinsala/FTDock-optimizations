@@ -72,7 +72,9 @@ struct Atom{
 	float		occupancy ;
 	float		temp_factor ;
 	float		charge ;
-} ;
+};
+
+typedef struct Atom Atom;
 
 struct Amino_Acid{	
 	char		res_name[4] ;
@@ -82,13 +84,15 @@ struct Amino_Acid{
 	int		nc ;
 	int		size ;
 	struct Atom	*Atom ;
-} ;
+};
+
+typedef struct Amino_Acid Amino_Acid;
 
 struct Structure{
 	char			ident[256] ;
 	int			length ;
 	struct Amino_Acid	*Residue ;	
-} ;
+};
 
 /************/
 
@@ -99,7 +103,7 @@ struct Angle{
 	int	*z_twist ;
 	int	*theta ;
 	int	*phi ;
-} ;
+};
 
 /************/
 
@@ -153,7 +157,7 @@ extern void discretise_structure( struct Structure This_Structure , float grid_s
 extern void surface_grid( float grid_span , int grid_size , float *grid , float surface , float internal_value ) ;
 
 extern void assign_charges( struct Structure This_Structure ) ;
-extern void electric_field( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) ;
+extern void electric_field( struct Structure This_Structure , float grid_span , int grid_size , float *grid );
 extern void electric_point_charge( struct Structure This_Structure , float grid_span , int grid_size , float *grid ) ;
 extern void electric_field_zero_core( int grid_size , float *elec_grid , float *surface_grid , float internal_value ) ;
 

@@ -83,17 +83,17 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
 
   /* Counters */
 
-  int	residue , atom ;
+  int residue , atom;
 
   /* Co-ordinates */
 
-  int	x , y , z ;
-  float		x_centre , y_centre , z_centre ;
+  int x , y , z, atom_number;
+  float x_centre , y_centre , z_centre;
 
   /* Variables */
 
-  float		distance ;
-  float		phi , epsilon ;
+  float distance;
+  float phi, epsilon;
 
 /************/
 
@@ -112,53 +112,113 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
   setvbuf( stdout , (char *)NULL , _IONBF , 0 ) ;
 
   printf( "  electric field calculations ( one dot / grid sheet ) " ) ;
+  
+  /* Calculates the number of atoms */
+  atom_number = 0;
+  for (residue = 1; residue <= This_Structure.length; residue++)
+    atom_number += This_Structure.Residue[residue].size;
+  
+  /* Allocates memory for all the needed attibutes of the atoms */
+  float *coord1, *coord2, *coord3, *charge;
+  int error;
+  error = posix_memalign((void **) &coord1, 16, atom_number * sizeof(float));
+  error |= posix_memalign((void **) &coord2, 16, atom_number * sizeof(float));
+  error |= posix_memalign((void **) &coord3, 16, atom_number * sizeof(float));
+  error |= posix_memalign((void **) &charge, 16, atom_number * sizeof(float));
+  
+  if (error) {GENERAL_MEMORY_PROBLEM};
+  
+  /* Initializes the consecutive arrays */
+  int atom_position = 0;
+  for (residue = 1; residue <= This_Structure.length; residue++) {
+    Amino_Acid * aminoacid = &(This_Structure.Residue[residue]);
+    int aminoacid_size = aminoacid->size;
+    
+    for (atom = 1; atom <= aminoacid_size; atom++, ++atom_position) {
+      Atom * atom_obj = &(aminoacid->Atom[atom]);
+      coord1[atom_position] = atom_obj->coord[1];
+      coord2[atom_position] = atom_obj->coord[2];
+      coord3[atom_position] = atom_obj->coord[3];
+      charge[atom_position] = atom_obj->charge;
+    }
+  }
 
-  for( x = 0 ; x < grid_size ; x ++ ) {
+//   for( x = 0 ; x < grid_size ; x ++ ) {
+// 
+//     printf( "." ) ;
+// 
+//     x_centre  = gcentre( x , grid_span , grid_size ) ;
+// 
+//     for( y = 0 ; y < grid_size ; y ++ ) {
+// 
+//       y_centre  = gcentre( y , grid_span , grid_size ) ;
+// 
+//       for( z = 0 ; z < grid_size ; z ++ ) {
+// 
+//         z_centre  = gcentre( z , grid_span , grid_size ) ;
+// 
+//         phi = 0 ;
+// 
+//         for( residue = 1 ; residue <= This_Structure.length ; residue ++ ) {
+// 	  
+// 	  struct Amino_Acid * aminoacid = &(This_Structure.Residue[residue]);
+// 	  int aminoacid_size = aminoacid->size;
+// 	  
+//           for( atom = 1 ; atom <= aminoacid_size ; atom ++ ) {
+// 	    
+// 	    struct Atom * atom_obj = &(aminoacid->Atom[atom]);
+// 
+//              if( atom_obj->charge != 0 ) {
+// 
+//               distance = PYTHAGORAS( atom_obj->coord[1] , atom_obj->coord[2] , atom_obj->coord[3] , x_centre , y_centre , z_centre ) ;
+//          
+//               distance = (distance < 2.0) ? 2.0 : distance ;
+// 
+// 	      epsilon = (distance >= 8.0) ? 80 : epsilon;
+// 	      epsilon = (distance <= 6.0) ? 4  : ( 38 * distance ) - 224;
+// 
+// 	      phi += ( atom_obj->charge / ( epsilon * distance ) ) ;
+//              }
+// 
+//           }
+//         }
+// 
+//         grid[gaddress(x,y,z,grid_size)] = (float)phi ;
+// 
+//       }
+//     }
+//   }
+
+  for (x = 0; x < grid_size; x++) {
 
     printf( "." ) ;
 
     x_centre  = gcentre( x , grid_span , grid_size ) ;
 
-    for( y = 0 ; y < grid_size ; y ++ ) {
+    for (y = 0; y < grid_size; y++) {
 
       y_centre  = gcentre( y , grid_span , grid_size ) ;
 
-      for( z = 0 ; z < grid_size ; z ++ ) {
+      for (z = 0; z < grid_size; z++) {
 
         z_centre  = gcentre( z , grid_span , grid_size ) ;
 
-        phi = 0 ;
-
-        for( residue = 1 ; residue <= This_Structure.length ; residue ++ ) {
-	  
-	  struct Amino_Acid * aminoacid = &(This_Structure.Residue[residue]);
-	  int aminoacid_size = aminoacid->size;
-	  
-          for( atom = 1 ; atom <= aminoacid_size ; atom ++ ) {
-	    
-	    struct Atom * atom_obj = &(aminoacid->Atom[atom]);
-
-             if( atom_obj->charge != 0 ) {
-
-              distance = PYTHAGORAS( atom_obj->coord[1] , atom_obj->coord[2] , atom_obj->coord[3] , x_centre , y_centre , z_centre ) ;
-         
-              distance = (distance < 2.0) ? 2.0 : distance ;
-
-	      epsilon = (distance >= 8.0) ? 80 : epsilon;
-	      epsilon = (distance <= 6.0) ? 4  : ( 38 * distance ) - 224;
+        phi = 0;
+	
+	for (atom_position = 0; atom_position < atom_number; ++atom_position) {
+	  if (charge[atom_position] != 0) {
+	      distance = PYTHAGORAS(coord1[atom_position], coord2[atom_position], coord3[atom_position], x_centre, y_centre, z_centre);
 	      
-// 	      if( distance >= 8.0 ) epsilon = 80;
-// 	      else if( distance <= 6.0 ) epsilon = 4;
-// 	      else epsilon = ( 38 * distance ) - 224;
+	      distance = (distance < 2.0) ? 2.0 : distance;
+	      epsilon = 80;
+	      epsilon = (distance >= 2.0 & distance <= 6.0) ? 4 : epsilon;
+	      epsilon = (distance > 6.0 & distance < 8.0) ? (38 * distance) - 224 : epsilon;
 
-	      phi += ( atom_obj->charge / ( epsilon * distance ) ) ;
-             }
+	      phi += (charge[atom_position] / (epsilon * distance));
+	  }
+	}
 
-          }
-        }
-
-        grid[gaddress(x,y,z,grid_size)] = (float)phi ;
-
+        grid[gaddress(x, y, z, grid_size)] = (float) phi;
       }
     }
   }
