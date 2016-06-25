@@ -75,7 +75,7 @@ void assign_charges( struct Structure This_Structure ) {
 
 }
 
-#define ELECTRIC_FIELD(_position, _phy) 										\
+#define ELECTRIC_FIELD(_position, _phi) 										\
 {															\
   float _distance = PYTHAGORAS(coord1[_position], coord2[_position], coord3[_position], x_centre, y_centre, z_centre);	\
   _distance = (_distance < 2.0) ? 2.0 : _distance;									\
@@ -83,19 +83,19 @@ void assign_charges( struct Structure This_Structure ) {
   _epsilon = (_distance >= 2.0 & _distance <= 6.0) ? 4 : _epsilon;							\
   _epsilon = (_distance > 6.0 & _distance < 8.0) ? (38 * _distance) - 224 : _epsilon;					\
 															\
-  _phy += (charge[_position] / (_epsilon * _distance));									\
+  _phi += (charge[_position] / (_epsilon * _distance));									\
 }
 
 
-// #define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 					\
+// #define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phi) 				\
 // {													\
 //   float _distance = PYTHAGORAS(*(_pcoord1), *(_pcoord2), *(_pcoord3), x_centre, y_centre, z_centre);	\
 //   _distance = (_distance < 2.0) ? 2.0 : _distance;							\
-//   float _epsilon = 80;											\
+//   float _epsilon = 80;										\
 //   _epsilon = (_distance >= 2.0 & _distance <= 6.0) ? 4 : _epsilon;					\
-//   _epsilon = (_distance > 6.0 & _distance < 8.0) ? (38 * _distance) - 224 : _epsilon;			\
+//   _epsilon = (_distance > 6.0 & _distance < 8.0) ? (38 * _distance) - 224 : _epsilon;		\
 // 													\
-//   _phy += (*(_pcharge) / (_epsilon * _distance));							\
+//   _phi += (*(_pcharge) / (_epsilon * _distance));							\
 // }
 
 
@@ -103,16 +103,13 @@ void assign_charges( struct Structure This_Structure ) {
     __m128 _hi = _mm256_extractf128_ps(_a, 1);	\
     __m128 _lo = _mm256_extractf128_ps(_a, 0);	\
     _lo = _mm_add_ps(_hi, _lo);			\
-    float _ret;					\
-    _ret  = _mm_extract_ps(_lo, 0);		\
-    _ret += _mm_extract_ps(_lo, 1);		\
-    _ret += _mm_extract_ps(_lo, 2);		\
-    _ret += _mm_extract_ps(_lo, 3);		\
-    _ret;					\
+    _lo = _mm_hadd_ps(_lo, _lo);		\
+    _lo = _mm_hadd_ps(_lo, _lo);		\
+    _mm_cvtss_f32(_lo);				\
 })
 
 
-#define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 		\
+#define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge) 		\
 {										\
   __m256 _x = _mm256_load_ps(_pcoord1);						\
   __m256 _y = _mm256_load_ps(_pcoord2);						\
@@ -161,7 +158,7 @@ void assign_charges( struct Structure This_Structure ) {
   /* phi += charge / (_epsilon * _distance) */					\
   __m256 _result = _mm256_mul_ps(_epsilon, _distance);				\
   _result = _mm256_div_ps(_c, _result);						\
-  _phy = _mm256_add_ps(_phy, _result);						\
+  vphi = _mm256_add_ps(vphi, _result);						\
 }
 
 
@@ -209,10 +206,10 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
   /* Allocates memory for all the needed attibutes of the atoms */
   float *coord1, *coord2, *coord3, *charge;
   int error;
-  error  = posix_memalign((void **) &coord1, 16, atom_number * sizeof(float));
-  error |= posix_memalign((void **) &coord2, 16, atom_number * sizeof(float));
-  error |= posix_memalign((void **) &coord3, 16, atom_number * sizeof(float));
-  error |= posix_memalign((void **) &charge, 16, atom_number * sizeof(float));
+  error  = posix_memalign((void **) &coord1, 32, atom_number * sizeof(float));
+  error |= posix_memalign((void **) &coord2, 32, atom_number * sizeof(float));
+  error |= posix_memalign((void **) &coord3, 32, atom_number * sizeof(float));
+  error |= posix_memalign((void **) &charge, 32, atom_number * sizeof(float));
   
   if (error) {GENERAL_MEMORY_PROBLEM};
   
@@ -272,14 +269,15 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
 	float * pcharge = charge;
 	
 	for (atom_position = 0; atom_position < atom_number - 7; atom_position += 8) {
-	  ELECTRIC_FIELD_V(pcoord1, pcoord2, pcoord3, pcharge, vphi);
+	  ELECTRIC_FIELD_V(pcoord1, pcoord2, pcoord3, pcharge);
 	  pcoord1+=8; pcoord2+=8; pcoord3+=8; pcharge+=8;
 	}
 	
-	for ( ; atom_position < atom_number; ++atom_position)
+	for ( ; atom_position < atom_number; ++atom_position) {
 	  ELECTRIC_FIELD(atom_position, phi);
+	}
 
-        grid[gaddress(x, y, z, grid_size)] = phi + _MM256_REDUCE_ADD_PS(vphi);
+	grid[gaddress(x, y, z, grid_size)] = phi + _MM256_REDUCE_ADD_PS(vphi);
       }
     }
   }
