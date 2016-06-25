@@ -135,8 +135,15 @@ void assign_charges( struct Structure This_Structure ) {
   
   /* epsilon = 80.0 */
   __m256 _epsilon = mask80;
-  
-  
+
+  /* 38muldistsub224 = (mask38 * distance) - mask224 */
+  __m256 _38_mul_dist = _mm256_mul_ps(mask38, _distance);
+  __m256 _38_mul_dist_sub_224 = _mm256_mul_ps(_38_mul_dist, mask224);
+
+  //si ge2_and_le6 == 1, epsilon = mask4. sino epsilon = mask80.
+  //si g6_and_l8 == 1, epsilon = 38_mul_dist_sub_224, sino es queda igual.
+                                                                                                        \
+  _phy += (*(_pcharge) / (_epsilon * _distance));
 }
 
 
@@ -152,6 +159,25 @@ distance = _mm256_max_ps(pyth, mask2);
 comp1 = _mm256_cmp_ps(distance, mask2, 29); //29 = GreaterEqual
 comp2 = _mm256_cmp_ps(distance, mask6, 17); //17 = LessEqual
 comp3 = _mm256_and_ps(comp1, comp2); // (distance => 2.0 & distance <= 6.0)
+
+
+
+
+
+float reduce_add_256(__m256 x) {
+    __m128 hi = _mm256_extractf128_ps(x, 1);
+    __m128 lo = _mm256_extractf128_ps(x, 0);
+    float ret;
+    ret  = _mm_extract_ps(lo, 0);
+    ret += _mm_extract_ps(lo, 1);
+    ret += _mm_extract_ps(lo, 2);
+    ret += _mm_extract_ps(lo, 3);
+    ret += _mm_extract_ps(hi, 0);
+    ret += _mm_extract_ps(hi, 1);
+    ret += _mm_extract_ps(hi, 2);
+    ret += _mm_extract_ps(hi, 3);
+    return ret;
+}
 
 
 
@@ -229,11 +255,13 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
   atom_number = atom_position;
   
   /* Initializes constant values */
-  __m256 mask2  = _mm256_set1_ps(2.0);
-  __m256 mask4  = _mm256_set1_ps(4.0);
-  __m256 mask6  = _mm256_set1_ps(6.0);
-  __m256 mask8  = _mm256_set1_ps(8.0);
-  __m256 mask80 = _mm256_set1_ps(80.0);
+  __m256 mask2   = _mm256_set1_ps(2.0);
+  __m256 mask4   = _mm256_set1_ps(4.0);
+  __m256 mask6   = _mm256_set1_ps(6.0);
+  __m256 mask8   = _mm256_set1_ps(8.0);
+  __m256 mask38  = _mm256_set1_ps(38.0);
+  __m256 mask80  = _mm256_set1_ps(80.0);
+  __m256 mask224 = _mm256_set1_ps(224.0);
 
   for (x = 0; x < grid_size; x++) {
 
