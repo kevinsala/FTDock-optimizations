@@ -167,15 +167,12 @@ comp3 = _mm256_and_ps(comp1, comp2); // (distance => 2.0 & distance <= 6.0)
 float reduce_add_256(__m256 x) {
     __m128 hi = _mm256_extractf128_ps(x, 1);
     __m128 lo = _mm256_extractf128_ps(x, 0);
+    lo = _mm_add_ps(hi, lo);
     float ret;
     ret  = _mm_extract_ps(lo, 0);
     ret += _mm_extract_ps(lo, 1);
     ret += _mm_extract_ps(lo, 2);
     ret += _mm_extract_ps(lo, 3);
-    ret += _mm_extract_ps(hi, 0);
-    ret += _mm_extract_ps(hi, 1);
-    ret += _mm_extract_ps(hi, 2);
-    ret += _mm_extract_ps(hi, 3);
     return ret;
 }
 
