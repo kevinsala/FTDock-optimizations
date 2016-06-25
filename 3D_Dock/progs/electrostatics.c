@@ -98,20 +98,19 @@ void assign_charges( struct Structure This_Structure ) {
 //   _phy += (*(_pcharge) / (_epsilon * _distance));							\
 // }
 
+
 float _mm256_reduce_add_ps(__m256 a) {
     __m128 hi = _mm256_extractf128_ps(a, 1);
     __m128 lo = _mm256_extractf128_ps(a, 0);
+    lo = _mm_add_ps(hi, lo);
     float ret;
     ret  = _mm_extract_ps(lo, 0);
     ret += _mm_extract_ps(lo, 1);
     ret += _mm_extract_ps(lo, 2);
     ret += _mm_extract_ps(lo, 3);
-    ret += _mm_extract_ps(hi, 0);
-    ret += _mm_extract_ps(hi, 1);
-    ret += _mm_extract_ps(hi, 2);
-    ret += _mm_extract_ps(hi, 3);
     return ret;
 }
+
 
 #define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 		\
 {										\
@@ -167,6 +166,7 @@ float _mm256_reduce_add_ps(__m256 a) {
   _result = _mm256_div_ps(_c, _result);						\
   _mm256_add_ps(_phy, _result);							\
 }
+
 
 /************************/
 
