@@ -144,27 +144,24 @@ float _mm256_reduce_add_ps(__m256 a) {
   __m256 _le6 = _mm256_cmp_ps(_distance, mask6, 18);				\
   __m256 _ge2_and_le6 = _mm256_and_ps(_ge2, _le6);				\
 										\
-  /* ge2_and_le6 = (distance > 6.0 & distance <= 6.0) */			\
+  /* ge2_and_le6 = (distance > 6.0 & distance < 8.0) */				\
   __m256 _g6 = _mm256_cmp_ps(_distance, mask6, 30);				\
   __m256 _l8 = _mm256_cmp_ps(_distance, mask8, 17);				\
   __m256 _g6_and_l8 = _mm256_and_ps(_g6, _l8);					\
 										\
-  /* epsilon = 80.0 */								\
-  __m256 _epsilon = mask80;							\
-										\
-  /* epsilon = (distance >= 2.0 & distance <= 6.0) ? 4 : epsilon */		\
-  _epsilon = _mm256_blendv_ps(_epsilon, mask4, _ge2_and_le6);			\
+  /* epsilon = (distance >= 2.0 & distance <= 6.0) ? 4 : 80.0 */		\
+  __m256 _epsilon = _mm256_blendv_ps(mask80, mask4, _ge2_and_le6);		\
 										\
   /* epsilon = (distance > 6.0 & distance < 8.0) ? (38 * distance) - 		\
    * 224 : epsilon */								\
   __m256 _38_mul_dist = _mm256_mul_ps(mask38, _distance);			\
   __m256 _38_mul_dist_sub_224 = _mm256_sub_ps(_38_mul_dist, mask224);		\
-  _epsilon = _mm256_blendv_ps(_38_mul_dist_sub_224, _epsilon, _g6_and_l8);	\
+  _epsilon = _mm256_blendv_ps(_epsilon, _38_mul_dist_sub_224, _g6_and_l8);	\
 										\
   /* phi += charge / (_epsilon * _distance) */					\
   __m256 _result = _mm256_mul_ps(_epsilon, _distance);				\
   _result = _mm256_div_ps(_c, _result);						\
-  _mm256_add_ps(_phy, _result);							\
+  _phy = _mm256_add_ps(_phy, _result);						\
 }
 
 
