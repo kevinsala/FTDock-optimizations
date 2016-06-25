@@ -27,6 +27,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "structures.h"
+#include "xmmintrin.h"
+#include "immintrin.h"
 
 void assign_charges( struct Structure This_Structure ) {
 
@@ -85,76 +87,71 @@ void assign_charges( struct Structure This_Structure ) {
 }
 
 
-#define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 					\
-{													\
-  float _distance = PYTHAGORAS(*(_pcoord1), *(_pcoord2), *(_pcoord3), x_centre, y_centre, z_centre);	\
-  _distance = (_distance < 2.0) ? 2.0 : _distance;							\
-  float _epsilon = 80;											\
-  _epsilon = (_distance >= 2.0 & _distance <= 6.0) ? 4 : _epsilon;					\
-  _epsilon = (_distance > 6.0 & _distance < 8.0) ? (38 * _distance) - 224 : _epsilon;			\
-													\
-  _phy += (*(_pcharge) / (_epsilon * _distance));							\
+// #define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 					\
+// {													\
+//   float _distance = PYTHAGORAS(*(_pcoord1), *(_pcoord2), *(_pcoord3), x_centre, y_centre, z_centre);	\
+//   _distance = (_distance < 2.0) ? 2.0 : _distance;							\
+//   float _epsilon = 80;											\
+//   _epsilon = (_distance >= 2.0 & _distance <= 6.0) ? 4 : _epsilon;					\
+//   _epsilon = (_distance > 6.0 & _distance < 8.0) ? (38 * _distance) - 224 : _epsilon;			\
+// 													\
+//   _phy += (*(_pcharge) / (_epsilon * _distance));							\
+// }
+
+#define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 		\
+{										\
+  __m256 _x = _mm256_load_ps(_pcoord1);						\
+  __m256 _y = _mm256_load_ps(_pcoord2);						\
+  __m256 _z = _mm256_load_ps(_pcoord3);						\
+  __m256 _c = _mm256_load_ps(_pcharge);						\
+										\
+  /* x = x1 - x2; y = y1 - y2; z = z1 - z2; */					\
+  _x = _mm256_sub_ps(_x, maskxcentre);						\
+  _y = _mm256_sub_ps(_y, maskycentre);						\
+  _z = _mm256_sub_ps(_z, maskzcentre);						\
+										\
+  /* x = x * x; y = y * y; z = z * z; */					\
+  _x = _mm256_mul_ps(_x, _x);							\
+  _y = _mm256_mul_ps(_y, _y);							\
+  _z = _mm256_mul_ps(_z, _z);							\
+										\
+  /* xyz = x + y + z */								\
+  __m256 _xyz = _mm256_add_ps(_x, _y);						\
+  _xyz = _mm256_add_ps(_xyz, _z);						\
+										\
+  /* pyth = SQRT(xyz) */							\
+  __m256 _pyth = _mm256_sqrt_ps(_xyz);						\
+										\
+  /* distance = MAX(pyth, 2) */							\
+  __m256 _distance = _mm256_max_ps(_pyth, mask2);				\
+										\
+  /* _ge2_and_le6 = (distance => 2.0 & distance <= 6.0) */			\
+  __m256 _ge2 = _mm256_cmp_ps(_distance, mask2, 29);				\
+  __m256 _le6 = _mm256_cmp_ps(_distance, mask6, 18);				\
+  __m256 _ge2_and_le6 = _mm256_and_ps(_ge2, _le6);				\
+										\
+  /* ge2_and_le6 = (distance > 6.0 & distance <= 6.0) */			\
+  __m256 _g6 = _mm256_cmp_ps(_distance, mask6, 30);				\
+  __m256 _l8 = _mm256_cmp_ps(_distance, mask8, 17);				\
+  __m256 _g6_and_l8 = _mm256_and_ps(_g6, _l8);					\
+										\
+  /* epsilon = 80.0 */								\
+  __m256 _epsilon = mask80;							\
+										\
+  /* epsilon = (distance >= 2.0 & distance <= 6.0) ? 4 : epsilon */		\
+  _epsilon = _mm256_blendv_ps(_epsilon, mask4, _ge2_and_le6);			\
+										\
+  /* epsilon = (distance > 6.0 & distance < 8.0) ? (38 * distance) - 		\
+   * 224 : epsilon */								\
+  __m256 _38_mul_dist = _mm256_mul_ps(mask38, _distance);			\
+  __m256 _38_mul_dist_sub_224 = _mm256_sub_ps(_38_mul_dist, mask224);		\
+  _epsilon = _mm256_blendv_ps(_38_mul_dist_sub_224, _epsilon, _g6_and_l8);	\
+										\
+  /* phi += charge / (_epsilon * _distance) */					\
+  __m256 _result = _mm256_mul_ps(_epsilon, _distance);				\
+  _result = _mm256_div_ps(_c, _result);						\
+  _mm256_add_ps(_phy, _result);							\
 }
-
-#define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 	\
-{									\
-  __m256 _x = _mm256_load_ps(_pcoord1);
-  __m256 _y = _mm256_load_ps(_pcoord2);
-  __m256 _z = _mm256_load_ps(_pcoord3);
-  __m256 _c = _mm256_load_ps(_pcharge);
-  
-  /* x = x1 - x2; y = y1 - y2; z = z1 - z2; */
-  _x = _mm256_sub_ps(_x, maskxcentre);
-  _y = _mm256_sub_ps(_y, maskycentre);
-  _z = _mm256_sub_ps(_z, maskzcentre);
-  
-  /* x = x * x; y = y * y; z = z * z; */
-  _x = _mm256_mul_ps(_x, _x);
-  _y = _mm256_mul_ps(_y, _y);
-  _z = _mm256_mul_ps(_z, _z);
-  
-  /* xyz = x + y + z */
-  __m256 _xyz = _m256_add_ps(_x, _y);
-  _xyz = _m256_add_ps(_xyz, _z);
-  
-  /* pyth = SQRT(xyz) */
-  __m256 _pyth = _mm256_sqrt_ps(_xyz);
-  
-  /* distance = MAX(pyth, 2) */
-  __m256 _distance = _mm256_max_ps(_pyth, mask2);
-  
-  /* _ge2_and_le6 = (distance => 2.0 & distance <= 6.0) */
-  __m256 _ge2 = _mm256_cmp_ps(_distance, mask2, 29);
-  __m256 _le6 = _mm256_cmp_ps(_distance, mask6, 18);
-  __m256 _ge2_and_le6 = _mm256_and_ps(_ge2, _le6);
-  
-  /* ge2_and_le6 = (distance > 6.0 & distance <= 6.0) */
-  __m256 _g6 = _mm256_cmp_ps(_distance, mask6, 30);
-  __m256 _l8 = _mm256_cmp_ps(_distance, mask8, 17);
-  __m256 _g6_and_l8 = _mm256_and_ps(_g6, _l8);
-  
-  /* epsilon = 80.0 */
-  __m256 _epsilon = mask80;
-  
-  
-}
-
-
-//fora inicialitzacio de mascara amb 2
-__m256 x, y, z, xaux, yaux, zaux, x2, y2, z2, xyz, pyth, distance, epsilon, comp1, comp2, comp3;
-__m256 maskx, masky, maskz, mask2, mask4, mask6, mask8, mask80;
-
-// -- DINS BUCLE --
-//PTYHAGORAS: sqrt((x - maskx)^2 + ... )
-
-distance = _mm256_max_ps(pyth, mask2);
-
-comp1 = _mm256_cmp_ps(distance, mask2, 29); //29 = GreaterEqual
-comp2 = _mm256_cmp_ps(distance, mask6, 17); //17 = LessEqual
-comp3 = _mm256_and_ps(comp1, comp2); // (distance => 2.0 & distance <= 6.0)
-
-
-
 
 /************************/
 
@@ -229,11 +226,13 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
   atom_number = atom_position;
   
   /* Initializes constant values */
-  __m256 mask2  = _mm256_set1_ps(2.0);
-  __m256 mask4  = _mm256_set1_ps(4.0);
-  __m256 mask6  = _mm256_set1_ps(6.0);
-  __m256 mask8  = _mm256_set1_ps(8.0);
-  __m256 mask80 = _mm256_set1_ps(80.0);
+  __m256 mask2   = _mm256_set1_ps(2.0);
+  __m256 mask4   = _mm256_set1_ps(4.0);
+  __m256 mask6   = _mm256_set1_ps(6.0);
+  __m256 mask8   = _mm256_set1_ps(8.0);
+  __m256 mask80  = _mm256_set1_ps(80.0);
+  __m256 mask38  = _mm256_set1_ps(38.0);
+  __m256 mask224 = _mm256_set1_ps(224.0);
 
   for (x = 0; x < grid_size; x++) {
 
@@ -255,20 +254,20 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
 	phi = 0.0;
 	__m256 vphi = _mm256_set1_ps(0.0);
 	
-	__m256 * pcoord1 = (__m256 *) coord1;
-	__m256 * pcoord2 = (__m256 *) coord2;
-	__m256 * pcoord3 = (__m256 *) coord3;
-	__m256 * pcharge = (__m256 *) charge;
+	float * pcoord1 = coord1;
+	float * pcoord2 = coord2;
+	float * pcoord3 = coord3;
+	float * pcharge = charge;
 	
 	for (atom_position = 0; atom_position < atom_number - 7; atom_position += 8) {
 	  ELECTRIC_FIELD_V(pcoord1, pcoord2, pcoord3, pcharge, vphi);
-	  ++pcoord1; ++pcoord2; ++pcoord3; ++pcharge;
+	  pcoord1+=8; pcoord2+=8; pcoord3+=8; pcharge+=8;
 	}
 	
 	for ( ; atom_position < atom_number; ++atom_position)
 	  ELECTRIC_FIELD(atom_position, phi);
 
-        grid[gaddress(x, y, z, grid_size)] = phi + /* TODO */;
+        grid[gaddress(x, y, z, grid_size)] = phi;
       }
     }
   }
