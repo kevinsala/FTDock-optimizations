@@ -99,7 +99,7 @@ void assign_charges( struct Structure This_Structure ) {
 // }
 
 
-#define _MM256_REDUCE_ADD_PS(_a) ({
+#define _MM256_REDUCE_ADD_PS(_a) ({		\
     __m128 _hi = _mm256_extractf128_ps(_a, 1);	\
     __m128 _lo = _mm256_extractf128_ps(_a, 0);	\
     _lo = _mm_add_ps(_hi, _lo);			\
