@@ -99,17 +99,17 @@ void assign_charges( struct Structure This_Structure ) {
 // }
 
 
-float _mm256_reduce_add_ps(__m256 a) {
-    __m128 hi = _mm256_extractf128_ps(a, 1);
-    __m128 lo = _mm256_extractf128_ps(a, 0);
-    lo = _mm_add_ps(hi, lo);
-    float ret;
-    ret  = _mm_extract_ps(lo, 0);
-    ret += _mm_extract_ps(lo, 1);
-    ret += _mm_extract_ps(lo, 2);
-    ret += _mm_extract_ps(lo, 3);
-    return ret;
-}
+#define _MM256_REDUCE_ADD_PS(_a) ({		\
+    __m128 _hi = _mm256_extractf128_ps(_a, 1);	\
+    __m128 _lo = _mm256_extractf128_ps(_a, 0);	\
+    _lo = _mm_add_ps(_hi, _lo);			\
+    float _ret;					\
+    _ret  = _mm_extract_ps(_lo, 0);		\
+    _ret += _mm_extract_ps(_lo, 1);		\
+    _ret += _mm_extract_ps(_lo, 2);		\
+    _ret += _mm_extract_ps(_lo, 3);		\
+    _ret;					\
+})
 
 
 #define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 		\
@@ -144,7 +144,7 @@ float _mm256_reduce_add_ps(__m256 a) {
   __m256 _le6 = _mm256_cmp_ps(_distance, mask6, 18);				\
   __m256 _ge2_and_le6 = _mm256_and_ps(_ge2, _le6);				\
 										\
-  /* ge2_and_le6 = (distance > 6.0 & distance < 8.0) */				\
+  /* g6_and_l8 = (distance > 6.0 & distance < 8.0) */				\
   __m256 _g6 = _mm256_cmp_ps(_distance, mask6, 30);				\
   __m256 _l8 = _mm256_cmp_ps(_distance, mask8, 17);				\
   __m256 _g6_and_l8 = _mm256_and_ps(_g6, _l8);					\
@@ -279,7 +279,7 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
 	for ( ; atom_position < atom_number; ++atom_position)
 	  ELECTRIC_FIELD(atom_position, phi);
 
-        grid[gaddress(x, y, z, grid_size)] = phi + _mm256_reduce_add_ps(vphi);
+        grid[gaddress(x, y, z, grid_size)] = phi + _MM256_REDUCE_ADD_PS(vphi);
       }
     }
   }
