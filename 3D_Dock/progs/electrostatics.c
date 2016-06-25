@@ -73,6 +73,28 @@ void assign_charges( struct Structure This_Structure ) {
 
 }
 
+#define ELECTRIC_FIELD(_position, _phy) 										\
+{															\
+  float _distance = PYTHAGORAS(coord1[_position], coord2[_position], coord3[_position], x_centre, y_centre, z_centre);	\
+  _distance = (_distance < 2.0) ? 2.0 : _distance;									\
+  float _epsilon = 80;													\
+  _epsilon = (_distance >= 2.0 & _distance <= 6.0) ? 4 : _epsilon;							\
+  _epsilon = (_distance > 6.0 & _distance < 8.0) ? (38 * _distance) - 224 : _epsilon;					\
+															\
+  _phy += (charge[_position] / (_epsilon * _distance));									\
+}
+
+
+#define ELECTRIC_FIELD_V(_pcoord1, _pcoord2, _pcoord3, _pcharge, _phy) 									\
+{																	\
+  float _distance = PYTHAGORAS(*(_pcoord1), *(_pcoord2), *(_pcoord3), x_centre, y_centre, z_centre);	\
+  _distance = (_distance < 2.0) ? 2.0 : _distance;											\
+  float _epsilon = 80;															\
+  _epsilon = (_distance >= 2.0 & _distance <= 6.0) ? 4 : _epsilon;									\
+  _epsilon = (_distance > 6.0 & _distance < 8.0) ? (38 * _distance) - 224 : _epsilon;							\
+																	\
+  _phy += (*(_pcharge) / (_epsilon * _distance));										\
+}
 
 
 /************************/
@@ -150,52 +172,6 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
   /* Sets the actual number of computable atoms */
   atom_number = atom_position;
 
-//   for( x = 0 ; x < grid_size ; x ++ ) {
-// 
-//     printf( "." ) ;
-// 
-//     x_centre  = gcentre( x , grid_span , grid_size ) ;
-// 
-//     for( y = 0 ; y < grid_size ; y ++ ) {
-// 
-//       y_centre  = gcentre( y , grid_span , grid_size ) ;
-// 
-//       for( z = 0 ; z < grid_size ; z ++ ) {
-// 
-//         z_centre  = gcentre( z , grid_span , grid_size ) ;
-// 
-//         phi = 0 ;
-// 
-//         for( residue = 1 ; residue <= This_Structure.length ; residue ++ ) {
-// 	  
-// 	  struct Amino_Acid * aminoacid = &(This_Structure.Residue[residue]);
-// 	  int aminoacid_size = aminoacid->size;
-// 	  
-//           for( atom = 1 ; atom <= aminoacid_size ; atom ++ ) {
-// 	    
-// 	    struct Atom * atom_obj = &(aminoacid->Atom[atom]);
-// 
-//              if( atom_obj->charge != 0 ) {
-// 
-//               distance = PYTHAGORAS( atom_obj->coord[1] , atom_obj->coord[2] , atom_obj->coord[3] , x_centre , y_centre , z_centre ) ;
-//          
-//               distance = (distance < 2.0) ? 2.0 : distance ;
-// 
-// 	      epsilon = (distance >= 8.0) ? 80 : epsilon;
-// 	      epsilon = (distance <= 6.0) ? 4  : ( 38 * distance ) - 224;
-// 
-// 	      phi += ( atom_obj->charge / ( epsilon * distance ) ) ;
-//              }
-// 
-//           }
-//         }
-// 
-//         grid[gaddress(x,y,z,grid_size)] = (float)phi ;
-// 
-//       }
-//     }
-//   }
-
   for (x = 0; x < grid_size; x++) {
 
     printf( "." ) ;
@@ -210,20 +186,30 @@ void electric_field( struct Structure This_Structure , float grid_span , int gri
 
         z_centre  = gcentre( z , grid_span , grid_size ) ;
 
-        phi = 0;
+	float phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
+	phi0 = phi1 = phi2 = phi3 = phi4 = phi5 = phi6 = phi7 = 0.0;
 	
-	for (atom_position = 0; atom_position < atom_number; ++atom_position) {
-	  distance = PYTHAGORAS(coord1[atom_position], coord2[atom_position], coord3[atom_position], x_centre, y_centre, z_centre);
-	  
-	  distance = (distance < 2.0) ? 2.0 : distance;
-	  epsilon = 80;
-	  epsilon = (distance >= 2.0 & distance <= 6.0) ? 4 : epsilon;
-	  epsilon = (distance > 6.0 & distance < 8.0) ? (38 * distance) - 224 : epsilon;
-
-	  phi += (charge[atom_position] / (epsilon * distance));
+	float * pcoord1 = coord1;
+	float * pcoord2 = coord2;
+	float * pcoord3 = coord3;
+	float * pcharge = charge;
+	
+	for (atom_position = 0; atom_position < atom_number - 7; atom_position += 8) {
+	  ELECTRIC_FIELD_V(pcoord1,   pcoord2,   pcoord3,   pcharge,   phi0);
+	  ELECTRIC_FIELD_V(pcoord1+1, pcoord2+1, pcoord3+1, pcharge+1, phi1);
+	  ELECTRIC_FIELD_V(pcoord1+2, pcoord2+2, pcoord3+2, pcharge+2, phi2);
+	  ELECTRIC_FIELD_V(pcoord1+3, pcoord2+3, pcoord3+3, pcharge+3, phi3);
+	  ELECTRIC_FIELD_V(pcoord1+4, pcoord2+4, pcoord3+4, pcharge+4, phi4);
+	  ELECTRIC_FIELD_V(pcoord1+5, pcoord2+5, pcoord3+5, pcharge+5, phi5);
+	  ELECTRIC_FIELD_V(pcoord1+6, pcoord2+6, pcoord3+6, pcharge+6, phi6);
+	  ELECTRIC_FIELD_V(pcoord1+7, pcoord2+7, pcoord3+7, pcharge+7, phi7);
+	  pcoord1 += 8; pcoord2 += 8; pcoord3 += 8; pcharge += 8;
 	}
+	
+	for ( ; atom_position < atom_number; ++atom_position)
+	  ELECTRIC_FIELD(atom_position, phi0);
 
-        grid[gaddress(x, y, z, grid_size)] = (float) phi;
+        grid[gaddress(x, y, z, grid_size)] = phi0 + phi1 + phi2 + phi3 + phi4 + phi5 + phi6 + phi7;
       }
     }
   }
